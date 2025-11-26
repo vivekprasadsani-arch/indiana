@@ -498,10 +498,32 @@ class WhatsAppOTPSite:
             session.headers.update(self.headers)
             
             # First, visit the base URL to get Cloudflare cookies if needed
+            # This mimics a real browser visit
             try:
-                session.get(self.base_url, timeout=10, verify=False, allow_redirects=True)
-            except:
-                pass  # Continue even if this fails
+                pre_response = session.get(
+                    self.base_url, 
+                    timeout=10, 
+                    verify=False, 
+                    allow_redirects=True
+                )
+                # Wait a bit to let Cloudflare process (if challenge page)
+                if 'Just a moment' in pre_response.text or 'challenge' in pre_response.text.lower():
+                    logger.warning(f"Cloudflare challenge detected for {self.base_url}, waiting...")
+                    time.sleep(3)  # Wait for Cloudflare to process
+                    # Try again
+                    pre_response = session.get(
+                        self.base_url, 
+                        timeout=10, 
+                        verify=False, 
+                        allow_redirects=True
+                    )
+            except Exception as e:
+                logger.warning(f"Pre-visit failed for {self.base_url}: {e}")
+            
+            # Build cookie string from session
+            cookie_str = '; '.join([f"{c.name}={c.value}" for c in session.cookies])
+            if cookie_str:
+                self.headers['Cookie'] = cookie_str
             
             response = session.post(
                 f"{self.base_url}/pl3/access/login",
@@ -514,6 +536,12 @@ class WhatsAppOTPSite:
                 verify=False
             )
             
+            # Update cookies from response
+            if session.cookies:
+                cookie_str = '; '.join([f"{c.name}={c.value}" for c in session.cookies])
+                if cookie_str:
+                    self.headers['Cookie'] = cookie_str
+            
             if response.status_code == 200:
                 result = response.json()
                 if result.get('code') == 0 and 'data' in result:
@@ -521,10 +549,8 @@ class WhatsAppOTPSite:
                     
                     if self.token:
                         self.headers['Authorization'] = f'Bearer {self.token}'
-                        # Update session cookies to headers for future requests
-                        for cookie in session.cookies:
-                            self.headers['Cookie'] = f"{cookie.name}={cookie.value}"
                         self.is_logged_in = True
+                        logger.info(f"Successfully logged in to {self.base_url}")
                         return True
                 else:
                     logger.error(f"Login failed for {self.base_url}: code={result.get('code')}, msg={result.get('msg', 'Unknown')}")
