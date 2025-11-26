@@ -812,7 +812,7 @@ class GlobalSessionManager:
         self._last_login_time = {}
     
     def initialize_all(self) -> bool:
-        """Login to all sites once at startup"""
+        """Login to all sites once at startup with retry mechanism"""
         with self._lock:
             if self._initialized:
                 return True
@@ -820,18 +820,34 @@ class GlobalSessionManager:
             success_count = 0
             
             for site_key, site_info in SITES.items():
-                site = WhatsAppOTPSite(site_info['url'], USERNAME, PASSWORD)
+                # Retry login up to 3 times
+                max_retries = 3
+                logged_in = False
                 
-                if site.login():
-                    self.sites[site_key] = site
-                    self._last_login_time[site_key] = time.time()
-                    success_count += 1
-                    logger.info(f"Global Session: Logged in to {site_info['name']}")
-                else:
-                    logger.error(f"Global Session: Failed to login to {site_info['name']}")
+                for attempt in range(max_retries):
+                    site = WhatsAppOTPSite(site_info['url'], USERNAME, PASSWORD)
+                    
+                    if site.login():
+                        self.sites[site_key] = site
+                        self._last_login_time[site_key] = time.time()
+                        success_count += 1
+                        logged_in = True
+                        logger.info(f"Global Session: Logged in to {site_info['name']} (attempt {attempt + 1})")
+                        break
+                    else:
+                        if attempt < max_retries - 1:
+                            logger.warning(f"Global Session: Login attempt {attempt + 1} failed for {site_info['name']}, retrying...")
+                            time.sleep(2)  # Wait before retry
+                
+                if not logged_in:
+                    logger.error(f"Global Session: Failed to login to {site_info['name']} after {max_retries} attempts")
             
             if success_count == len(SITES):
                 self._initialized = True
+                return True
+            elif success_count > 0:
+                logger.warning(f"Global Session: Only {success_count}/{len(SITES)} sites logged in, but continuing...")
+                self._initialized = True  # Continue even if some sites fail
                 return True
             return False
     

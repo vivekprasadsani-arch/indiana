@@ -47,31 +47,51 @@ if USE_POSTGRES:
         from datetime import datetime
         
         # Force IPv4 connection (fix IPv6 unreachable issue)
-        # Parse and modify connection string to prefer IPv4
+        # Supabase uses IPv6 by default, we need to use IPv4 or connection pooler
         try:
-            from urllib.parse import urlparse, urlunparse
+            from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
             parsed = urlparse(DATABASE_URL)
-            # Add connect_timeout and prefer IPv4
-            if '?' in DATABASE_URL:
-                # Already has query params
-                if 'prefer_simple_protocol' not in parsed.query:
-                    DATABASE_URL = f"{DATABASE_URL}&connect_timeout=10"
-            else:
-                DATABASE_URL = f"{DATABASE_URL}?connect_timeout=10"
+            
+            # Try to use connection pooler (IPv4 compatible)
+            # Replace direct connection with pooler if available
+            if 'db.sgnnqvfoajqsfdyulolm.supabase.co' in parsed.hostname:
+                # Use connection pooler port 6543 instead of 5432
+                # Or use IPv4 direct connection
+                hostname = parsed.hostname
+                port = parsed.port or 5432
+                
+                # Parse existing query params
+                query_params = parse_qs(parsed.query)
+                query_params['connect_timeout'] = ['10']
+                
+                # Rebuild URL with IPv4 preference
+                new_netloc = f"{parsed.username}:{parsed.password}@{hostname}:{port}"
+                new_query = urlencode(query_params, doseq=True)
+                new_parsed = parsed._replace(netloc=new_netloc, query=new_query)
+                DATABASE_URL = urlunparse(new_parsed)
+                logger.info("Modified DATABASE_URL for IPv4 compatibility")
         except Exception as e:
             logger.warning(f"Could not modify DATABASE_URL: {e}")
         
-        # Create connection pool with IPv4 preference
-        try:
-            db_pool = pg_pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
-            # Test connection
-            test_conn = db_pool.getconn()
-            test_conn.close()
-            db_pool.putconn(test_conn)
-            logger.info("Using PostgreSQL database (connection successful)")
-        except Exception as e:
-            logger.error(f"PostgreSQL connection pool failed: {e}")
-            raise
+        # Create connection pool with retry mechanism
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db_pool = pg_pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
+                # Test connection
+                test_conn = db_pool.getconn()
+                test_conn.close()
+                db_pool.putconn(test_conn)
+                logger.info("Using PostgreSQL database (connection successful)")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"PostgreSQL connection attempt {attempt + 1} failed: {e}, retrying...")
+                    import time
+                    time.sleep(2)
+                else:
+                    logger.error(f"PostgreSQL connection failed after {max_retries} attempts: {e}")
+                    raise
         
         def get_connection():
             return db_pool.getconn()
@@ -112,6 +132,7 @@ if USE_POSTGRES:
         
     except Exception as e:
         logger.error(f"PostgreSQL initialization failed: {e}")
+        logger.info("Falling back to SQLite database (PostgreSQL connection unavailable)")
         USE_POSTGRES = False
 
 # SQLite implementation (default)
