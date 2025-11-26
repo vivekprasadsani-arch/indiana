@@ -22,15 +22,6 @@ import re
 from datetime import datetime, time as dt_time
 from typing import Optional, Dict, List
 
-# PostgreSQL support (import only if needed)
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-    from psycopg2 import pool
-    PSYCOPG2_AVAILABLE = True
-except ImportError:
-    PSYCOPG2_AVAILABLE = False
-
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
@@ -51,16 +42,12 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==================== CONFIGURATION ====================
 
-# Environment variables with fallback to defaults
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8419074330:AAGGPd9rZEFPgbfzEadJtsWg4mouVLWKZns")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "7325836764"))
+BOT_TOKEN = "8419074330:AAGGPd9rZEFPgbfzEadJtsWg4mouVLWKZns"
+ADMIN_ID = 7325836764
 
 # Site credentials
-USERNAME = os.getenv("SITE_USERNAME", "9475595762")
-PASSWORD = os.getenv("SITE_PASSWORD", "raja0000")
-
-# Database configuration (use environment variable for production)
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+USERNAME = "9475595762"
+PASSWORD = "raja0000"
 
 # Sites configuration
 SITES = {
@@ -86,7 +73,6 @@ MAX_CONCURRENT_API_REQUESTS = 5  # Maximum concurrent OTP requests per site (API
 
 # Database
 DB_PATH = "telegram_bot.db"
-USE_POSTGRES = bool(DATABASE_URL)  # Use PostgreSQL if DATABASE_URL is set
 
 # ==================== LOGGING ====================
 
