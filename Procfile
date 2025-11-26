@@ -1,2 +1,2 @@
-worker: python telegram_bot_deploy.py
+worker: python start_bot.py
 
