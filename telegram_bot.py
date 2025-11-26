@@ -116,76 +116,76 @@ except ImportError:
     logger.info("Using original SQLite implementation")
     
     def init_db():
-    """Initialize SQLite database"""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            last_name TEXT,
-            approved INTEGER DEFAULT 0,
-            balance REAL DEFAULT 0,
-            total_numbers INTEGER DEFAULT 0,
-            daily_numbers INTEGER DEFAULT 0,
-            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Number progress tracking table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS number_progress (
-            phone_number TEXT PRIMARY KEY,
-            user_id INTEGER,
-            site1_linked INTEGER DEFAULT 0,
-            site2_linked INTEGER DEFAULT 0,
-            site3_linked INTEGER DEFAULT 0,
-            site4_linked INTEGER DEFAULT 0,
-            completed INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(user_id)
-        )
-    ''')
-    
-    # Daily stats table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS daily_stats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            date TEXT,
-            numbers_added INTEGER DEFAULT 0,
-            earnings REAL DEFAULT 0,
-            UNIQUE(user_id, date)
-        )
-    ''')
-    
-    # Sessions table (for site logins)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS sessions (
-            site_key TEXT PRIMARY KEY,
-            token TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Activity log
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            action TEXT,
-            details TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-    logger.info("Database initialized")
+        """Initialize SQLite database"""
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        cursor = conn.cursor()
+        
+        # Users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                approved INTEGER DEFAULT 0,
+                balance REAL DEFAULT 0,
+                total_numbers INTEGER DEFAULT 0,
+                daily_numbers INTEGER DEFAULT 0,
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Number progress tracking table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS number_progress (
+                phone_number TEXT PRIMARY KEY,
+                user_id INTEGER,
+                site1_linked INTEGER DEFAULT 0,
+                site2_linked INTEGER DEFAULT 0,
+                site3_linked INTEGER DEFAULT 0,
+                site4_linked INTEGER DEFAULT 0,
+                completed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )
+        ''')
+        
+        # Daily stats table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                date TEXT,
+                numbers_added INTEGER DEFAULT 0,
+                earnings REAL DEFAULT 0,
+                UNIQUE(user_id, date)
+            )
+        ''')
+        
+        # Sessions table (for site logins)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sessions (
+                site_key TEXT PRIMARY KEY,
+                token TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Activity log
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                action TEXT,
+                details TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        logger.info("Database initialized")
 
 def get_user(user_id: int) -> Optional[Dict]:
     """Get user from database"""
