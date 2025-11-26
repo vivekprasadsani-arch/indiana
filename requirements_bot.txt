@@ -1,0 +1,6 @@
+python-telegram-bot==20.7
+pycryptodome==3.19.0
+requests==2.31.0
+pytz==2023.3
+schedule==1.2.0
+

@@ -1,0 +1,14 @@
+# Telegram Bot Configuration
+BOT_TOKEN=your_bot_token_here
+ADMIN_ID=your_admin_id_here
+
+# Site Credentials
+SITE_USERNAME=your_site_username
+SITE_PASSWORD=your_site_password
+
+# Database Configuration (PostgreSQL for Production)
+DATABASE_URL=postgresql://user:password@host:port/database
+
+# Example for Supabase:
+# DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres
+
