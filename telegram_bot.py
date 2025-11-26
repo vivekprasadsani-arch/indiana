@@ -502,11 +502,18 @@ class WhatsAppOTPSite:
                         self.headers['Authorization'] = f'Bearer {self.token}'
                         self.is_logged_in = True
                         return True
+                else:
+                    logger.error(f"Login failed for {self.base_url}: code={result.get('code')}, msg={result.get('msg', 'Unknown')}")
+            else:
+                logger.error(f"Login failed for {self.base_url}: HTTP {response.status_code}, response={response.text[:200]}")
             
             return False
             
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Login network error for {self.base_url}: {type(e).__name__}: {e}")
+            return False
         except Exception as e:
-            logger.error(f"Login error for {self.base_url}: {e}")
+            logger.error(f"Login error for {self.base_url}: {type(e).__name__}: {e}")
             return False
     
     def get_otp(self, phone: str, retry: int = 3) -> Optional[str]:

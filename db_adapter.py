@@ -46,9 +46,32 @@ if USE_POSTGRES:
         import pytz
         from datetime import datetime
         
-        # Create connection pool
-        db_pool = pg_pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
-        logger.info("Using PostgreSQL database")
+        # Force IPv4 connection (fix IPv6 unreachable issue)
+        # Parse and modify connection string to prefer IPv4
+        try:
+            from urllib.parse import urlparse, urlunparse
+            parsed = urlparse(DATABASE_URL)
+            # Add connect_timeout and prefer IPv4
+            if '?' in DATABASE_URL:
+                # Already has query params
+                if 'prefer_simple_protocol' not in parsed.query:
+                    DATABASE_URL = f"{DATABASE_URL}&connect_timeout=10"
+            else:
+                DATABASE_URL = f"{DATABASE_URL}?connect_timeout=10"
+        except Exception as e:
+            logger.warning(f"Could not modify DATABASE_URL: {e}")
+        
+        # Create connection pool with IPv4 preference
+        try:
+            db_pool = pg_pool.ThreadedConnectionPool(1, 20, dsn=DATABASE_URL)
+            # Test connection
+            test_conn = db_pool.getconn()
+            test_conn.close()
+            db_pool.putconn(test_conn)
+            logger.info("Using PostgreSQL database (connection successful)")
+        except Exception as e:
+            logger.error(f"PostgreSQL connection pool failed: {e}")
+            raise
         
         def get_connection():
             return db_pool.getconn()
