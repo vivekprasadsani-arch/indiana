@@ -52,24 +52,24 @@ if USE_POSTGRES:
             from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
             parsed = urlparse(DATABASE_URL)
             
-            # Try to use connection pooler (IPv4 compatible)
-            # Replace direct connection with pooler if available
+            # Use Supabase Connection Pooler (IPv4 compatible, port 6543)
+            # This avoids IPv6 unreachable issues
             if 'db.sgnnqvfoajqsfdyulolm.supabase.co' in parsed.hostname:
-                # Use connection pooler port 6543 instead of 5432
-                # Or use IPv4 direct connection
                 hostname = parsed.hostname
-                port = parsed.port or 5432
+                # Use connection pooler port 6543 (Transaction mode)
+                port = 6543
                 
                 # Parse existing query params
                 query_params = parse_qs(parsed.query)
                 query_params['connect_timeout'] = ['10']
+                query_params['sslmode'] = ['require']
                 
-                # Rebuild URL with IPv4 preference
+                # Rebuild URL with connection pooler
                 new_netloc = f"{parsed.username}:{parsed.password}@{hostname}:{port}"
                 new_query = urlencode(query_params, doseq=True)
                 new_parsed = parsed._replace(netloc=new_netloc, query=new_query)
                 DATABASE_URL = urlunparse(new_parsed)
-                logger.info("Modified DATABASE_URL for IPv4 compatibility")
+                logger.info("Using Supabase Connection Pooler (port 6543) for IPv4 compatibility")
         except Exception as e:
             logger.warning(f"Could not modify DATABASE_URL: {e}")
         

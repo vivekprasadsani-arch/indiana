@@ -434,9 +434,21 @@ class WhatsAppOTPSite:
         self.username = username
         self.password = password
         self.token = None
+        # Enhanced headers to bypass Cloudflare protection
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Content-Type': 'application/json'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Content-Type': 'application/json',
+            'Origin': self.base_url.rstrip('/'),
+            'Referer': f"{self.base_url}/",
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
         }
         self.is_logged_in = False
     
@@ -481,14 +493,23 @@ class WhatsAppOTPSite:
         try:
             password_hash = hashlib.md5(self.password.encode()).hexdigest()
             
-            response = requests.post(
+            # Create session to handle cookies (helps with Cloudflare)
+            session = requests.Session()
+            session.headers.update(self.headers)
+            
+            # First, visit the base URL to get Cloudflare cookies if needed
+            try:
+                session.get(self.base_url, timeout=10, verify=False, allow_redirects=True)
+            except:
+                pass  # Continue even if this fails
+            
+            response = session.post(
                 f"{self.base_url}/pl3/access/login",
                 json={
                     'reg_type': 1,
                     'phone': self.username,
                     'password': password_hash
                 },
-                headers=self.headers,
                 timeout=15,
                 verify=False
             )
@@ -500,10 +521,19 @@ class WhatsAppOTPSite:
                     
                     if self.token:
                         self.headers['Authorization'] = f'Bearer {self.token}'
+                        # Update session cookies to headers for future requests
+                        for cookie in session.cookies:
+                            self.headers['Cookie'] = f"{cookie.name}={cookie.value}"
                         self.is_logged_in = True
                         return True
                 else:
                     logger.error(f"Login failed for {self.base_url}: code={result.get('code')}, msg={result.get('msg', 'Unknown')}")
+            elif response.status_code == 403:
+                # Cloudflare protection detected
+                if 'Just a moment' in response.text or 'challenge' in response.text.lower():
+                    logger.error(f"Login failed for {self.base_url}: Cloudflare protection detected (HTTP 403). Site may be blocking automated requests.")
+                else:
+                    logger.error(f"Login failed for {self.base_url}: HTTP 403, response={response.text[:200]}")
             else:
                 logger.error(f"Login failed for {self.base_url}: HTTP {response.status_code}, response={response.text[:200]}")
             
