@@ -1809,6 +1809,28 @@ async def post_init(application):
     loop = asyncio.get_running_loop()
     schedule_tasks(application, loop)
 
+def start_health_server(port=10000):
+    """Start a simple HTTP server for Render health checks"""
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    
+    class HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'OK')
+        
+        def log_message(self, format, *args):
+            pass  # Suppress logs
+    
+    def run_server():
+        server = HTTPServer(('0.0.0.0', port), HealthHandler)
+        server.serve_forever()
+    
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    logger.info(f"Health check server started on port {port}")
+
 def main():
     """Start the bot"""
     print("\n" + "="*60)
@@ -1816,9 +1838,20 @@ def main():
     print("  Global Shared Sessions for All Users")
     print("="*60 + "\n")
     
+    # Start health check server for Render (port binding)
+    port = int(os.getenv("PORT", "10000"))
+    start_health_server(port)
+    print(f"[OK] Health check server started on port {port}")
+    
     # Initialize database
     init_db()
     print("[OK] Database initialized")
+    
+    # Check environment variables
+    if not USERNAME or USERNAME == "9475595762":
+        logger.warning("SITE_USERNAME not set, using default")
+    if not PASSWORD or PASSWORD == "raja0000":
+        logger.warning("SITE_PASSWORD not set, using default")
     
     # Initialize global sessions at startup
     print("\n[*] Logging in to all sites...")
@@ -1867,7 +1900,7 @@ def main():
     print("  Press Ctrl+C to stop")
     print("="*60 + "\n")
     
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()

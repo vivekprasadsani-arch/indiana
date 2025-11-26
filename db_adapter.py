@@ -13,6 +13,28 @@ logger = logging.getLogger(__name__)
 
 # Check if we should use PostgreSQL
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+# Fix password encoding if @ symbol is present (URL encode @ to %40)
+if DATABASE_URL and '@' in DATABASE_URL:
+    # Check if password contains @ that needs encoding
+    # Format: postgresql://user:password@host:port/db
+    try:
+        from urllib.parse import urlparse, urlunparse, quote
+        parsed = urlparse(DATABASE_URL)
+        if '@' in parsed.netloc:
+            # Split netloc to get user:pass and host:port
+            auth_part, host_part = parsed.netloc.rsplit('@', 1)
+            if ':' in auth_part:
+                user, password = auth_part.split(':', 1)
+                # Only encode if password has @ and not already encoded
+                if '@' in password and '%40' not in password:
+                    password = password.replace('@', '%40')
+                    auth_part = f"{user}:{password}"
+                    parsed = parsed._replace(netloc=f"{auth_part}@{host_part}")
+                    DATABASE_URL = urlunparse(parsed)
+                    logger.info("Fixed DATABASE_URL password encoding")
+    except Exception as e:
+        logger.warning(f"Could not fix DATABASE_URL encoding: {e}")
+
 USE_POSTGRES = bool(DATABASE_URL)
 
 # Initialize based on database type
