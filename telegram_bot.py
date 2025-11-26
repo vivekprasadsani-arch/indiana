@@ -1847,10 +1847,10 @@ def main():
     init_db()
     print("[OK] Database initialized")
     
-    # Check environment variables
-    if not USERNAME or USERNAME == "9475595762":
+    # Check environment variables (only warn if actually missing, not if same as default)
+    if not os.getenv("SITE_USERNAME"):
         logger.warning("SITE_USERNAME not set, using default")
-    if not PASSWORD or PASSWORD == "raja0000":
+    if not os.getenv("SITE_PASSWORD"):
         logger.warning("SITE_PASSWORD not set, using default")
     
     # Initialize global sessions at startup
