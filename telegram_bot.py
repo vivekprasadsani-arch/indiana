@@ -42,12 +42,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==================== CONFIGURATION ====================
 
-BOT_TOKEN = "8419074330:AAGGPd9rZEFPgbfzEadJtsWg4mouVLWKZns"
-ADMIN_ID = 7325836764
+# Environment variables with fallback to defaults (for production)
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8419074330:AAGGPd9rZEFPgbfzEadJtsWg4mouVLWKZns")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "7325836764"))
 
 # Site credentials
-USERNAME = "9475595762"
-PASSWORD = "raja0000"
+USERNAME = os.getenv("SITE_USERNAME", "9475595762")
+PASSWORD = os.getenv("SITE_PASSWORD", "raja0000")
 
 # Sites configuration
 SITES = {
@@ -101,7 +102,20 @@ def get_site_semaphore(site_key: str) -> asyncio.Semaphore:
 
 # ==================== DATABASE ====================
 
-def init_db():
+# Import database adapter (auto-detects SQLite or PostgreSQL)
+try:
+    from db_adapter import (
+        init_db, get_user, add_or_update_user, approve_user, reject_user,
+        update_user_stats, reset_daily_stats, get_daily_report, log_activity,
+        get_number_progress, init_number_progress, update_site_progress,
+        check_and_complete_number, get_incomplete_sites, reset_daily_number_progress
+    )
+    logger.info("Using database adapter (auto-detects SQLite/PostgreSQL)")
+except ImportError:
+    # Fallback to original SQLite implementation
+    logger.info("Using original SQLite implementation")
+    
+    def init_db():
     """Initialize SQLite database"""
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
